@@ -1,3 +1,38 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* บังคับ Dark Mode 100% และป้องกันขอบขาวล้นจอบนมือถือ */
+html, body, #root {
+  background-color: #020617 !important; /* bg-slate-950 */
+  color: #f8fafc !important; /* text-slate-50 */
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+  width: 100% !important;
+  margin: 0;
+  padding: 0;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ป้องกัน input / select ในมือถือซูมเองหรือพื้นหลังกลายเป็นสีขาว */
+input, select, textarea {
+  background-color: #0f172a !important; /* bg-slate-900 */
+  color: #ffffff !important;
+  border-color: #334155 !important;
+}
+
+/* ซ่อน Scrollbar แนวนอนเผื่อมีองค์ประกอบล้นด้านใน */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #020617; 
+}
+::-webkit-scrollbar-thumb {
+  background: #334155; 
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569; 
+}
