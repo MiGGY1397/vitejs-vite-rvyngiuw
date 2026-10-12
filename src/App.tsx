@@ -16,7 +16,7 @@ import {
   appendMaintenanceLogToSheet 
 } from './lib/googleSheetsService';
 import type { User } from 'firebase/auth';
-import { CheckCircle2, AlertTriangle, ShieldCheck, ExternalLink, Sparkles } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
 
 const INITIAL_DEMO_VEHICLES: Vehicle[] = [
   {
@@ -57,7 +57,7 @@ const INITIAL_DEMO_FUEL_LOGS: FuelLog[] = [
     liters: 42.0,
     totalCost: 1617,
     pricePerLiter: 38.50,
-    isFullTank: true, // Baseline
+    isFullTank: true, 
     gasStation: 'PTT Station',
     notes: 'เติมเต็มถังเป็นฐานเริ่มต้น',
   },
@@ -70,7 +70,7 @@ const INITIAL_DEMO_FUEL_LOGS: FuelLog[] = [
     liters: 10.5,
     totalCost: 400,
     pricePerLiter: 38.10,
-    isFullTank: false, // เติมไม่เต็มถัง (ทบยอด)
+    isFullTank: false, 
     gasStation: 'Bangchak',
     notes: 'เติมรีบๆ 400 บาท (ทบยอด)',
   },
@@ -83,7 +83,7 @@ const INITIAL_DEMO_FUEL_LOGS: FuelLog[] = [
     liters: 13.1,
     totalCost: 500,
     pricePerLiter: 38.15,
-    isFullTank: false, // เติมไม่เต็มถัง (ทบยอดรอบที่ 2)
+    isFullTank: false, 
     gasStation: 'Shell',
     notes: 'เติมแวะปั๊ม 500 บาท',
   },
@@ -96,7 +96,7 @@ const INITIAL_DEMO_FUEL_LOGS: FuelLog[] = [
     liters: 28.4,
     totalCost: 1093,
     pricePerLiter: 38.50,
-    isFullTank: true, // เต็มถัง! ปิดรอบทบยอด
+    isFullTank: true, 
     gasStation: 'PTT Station',
     notes: 'เติมเต็มถังปิดรอบสะสม',
   },
@@ -165,7 +165,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'fuel' | 'maintenance' | 'report'>('dashboard');
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
   
-  // Google Sheets & Auth State
   const [user, setUser] = useState<User | null>(null);
   const [spreadsheetId, setSpreadsheetId] = useState<string | null>(() => {
     return localStorage.getItem('carlog_spreadsheet_id') || null;
@@ -185,7 +184,6 @@ export default function App() {
     }, 4500);
   };
 
-  // Save to local cache as immediate responsive storage
   useEffect(() => {
     localStorage.setItem('carlog_vehicles', JSON.stringify(vehicles));
   }, [vehicles]);
@@ -198,7 +196,6 @@ export default function App() {
     localStorage.setItem('carlog_maint_logs', JSON.stringify(maintenanceLogs));
   }, [maintenanceLogs]);
 
-  // Firebase Auth listener
   useEffect(() => {
     const unsubscribe = initAuth(
       async (authUser, token) => {
@@ -212,7 +209,6 @@ export default function App() {
           localStorage.setItem('carlog_spreadsheet_url', setup.spreadsheetUrl);
 
           if (setup.isNewlyCreated) {
-            // Seed newly created sheet with initial demo cars & logs so it's ready immediately
             for (const v of vehicles) {
               await appendVehicleToSheet(setup.spreadsheetId, v, token);
             }
@@ -224,7 +220,6 @@ export default function App() {
             }
             showToast('สร้าง Google Sheet "CarLog Book" พร้อมหัวตารางสำเร็จแล้ว!', 'success');
           } else {
-            // Load existing data from the sheet
             const data = await loadSpreadsheetData(setup.spreadsheetId, token);
             if (data.vehicles.length > 0) {
               setVehicles(data.vehicles);
@@ -252,7 +247,6 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Google Login Handler
   const handleGoogleLogin = async () => {
     try {
       setIsSyncing(true);
@@ -304,7 +298,6 @@ export default function App() {
     showToast('ออกจากระบบแล้ว', 'info');
   };
 
-  // Manual Sync with Sheets
   const handleSyncWithSheets = async () => {
     const token = await getAccessToken();
     if (!token || !spreadsheetId) {
@@ -332,7 +325,6 @@ export default function App() {
     }
   };
 
-  // Add Vehicle
   const handleAddVehicle = async (data: Omit<Vehicle, 'id' | 'createdAt'>) => {
     const newVehicle: Vehicle = {
       ...data,
@@ -355,7 +347,6 @@ export default function App() {
     }
   };
 
-  // Add Fuel Log
   const handleAddFuelLog = async (logData: Omit<FuelLog, 'id'>) => {
     const newLog: FuelLog = {
       ...logData,
@@ -364,7 +355,6 @@ export default function App() {
 
     setIsSaving(true);
     try {
-      // Calculate updated array with recalculated consumption
       const updatedLogs = recalculateFuelLogs([...fuelLogs, newLog]);
       const enrichedNewLog = updatedLogs.find((l) => l.id === newLog.id) || newLog;
 
@@ -375,7 +365,6 @@ export default function App() {
 
       setFuelLogs(updatedLogs);
 
-      // Update vehicle current odometer if higher
       if (selectedVehicle && newLog.odometer > selectedVehicle.currentOdometer) {
         const updatedVehicle = { ...selectedVehicle, currentOdometer: newLog.odometer };
         setSelectedVehicle(updatedVehicle);
@@ -395,7 +384,6 @@ export default function App() {
     }
   };
 
-  // Add Maintenance Log
   const handleAddMaintenanceLog = async (maintData: Omit<MaintenanceLog, 'id'>) => {
     const newMaint: MaintenanceLog = {
       ...maintData,
@@ -411,7 +399,6 @@ export default function App() {
 
       setMaintenanceLogs((prev) => [newMaint, ...prev]);
 
-      // Update vehicle current odometer if higher
       if (selectedVehicle && newMaint.odometer > selectedVehicle.currentOdometer) {
         const updatedVehicle = { ...selectedVehicle, currentOdometer: newMaint.odometer };
         setSelectedVehicle(updatedVehicle);
@@ -427,8 +414,9 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-yellow-400 selection:text-slate-950">
-      {/* Toast Notification */}
+    // เปลี่ยนตรงนี้! ใช้ relative w-full overflow-hidden ล็อก 100% เลย
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-yellow-400 selection:text-slate-950 relative w-full overflow-hidden">
+      
       {toast && (
         <div className="fixed top-4 right-4 z-50 animate-in fade-in slide-in-from-top-4 duration-200">
           <div
@@ -448,7 +436,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Top Header */}
       <Header
         vehicles={vehicles}
         selectedVehicle={selectedVehicle}
@@ -464,13 +451,12 @@ export default function App() {
         setActiveTab={setActiveTab}
       />
 
-      {/* Google Sheets Ownership Hero Banner (If not yet connected) */}
       {!user && (
-        <div className="bg-gradient-to-r from-slate-950 via-sky-950/70 to-slate-950 border-b border-sky-900/40 text-white px-4 py-3 shadow-inner">
-          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm">
-            <div className="flex items-center gap-2.5">
+        <div className="bg-gradient-to-r from-slate-950 via-sky-950/70 to-slate-950 border-b border-sky-900/40 text-white px-2 sm:px-4 py-3 shadow-inner w-full">
+          <div className="w-full max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm">
+            <div className="flex items-center gap-2.5 w-full">
               <ShieldCheck className="w-4 h-4 text-yellow-400 shrink-0" />
-              <span>
+              <span className="break-words w-full">
                 <strong className="text-yellow-400">ฐานข้อมูลส่วนตัว (Data Ownership 100%):</strong> เชื่อมต่อ Google Sheets เพื่อส่งข้อมูลทุกรายการไปเก็บใน Google Drive ของคุณเอง ไม่มีโฆษณา ไม่หาย
               </span>
             </div>
@@ -484,8 +470,8 @@ export default function App() {
         </div>
       )}
 
-      {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 pb-24 md:pb-12">
+      {/* เปลี่ยนตรงนี้! ใช้ w-full เพื่อไม่ให้ล้นจอ */}
+      <main className="w-full max-w-7xl mx-auto px-2 sm:px-4 py-4 sm:py-6 pb-24 md:pb-12">
         {activeTab === 'dashboard' && (
           <DashboardView
             vehicle={selectedVehicle}
@@ -528,7 +514,6 @@ export default function App() {
         )}
       </main>
 
-      {/* Add Vehicle Modal */}
       <VehicleModal
         isOpen={isAddVehicleOpen}
         onClose={() => setIsAddVehicleOpen(false)}
