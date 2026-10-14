@@ -330,7 +330,7 @@ export const FuelTrackerView: React.FC<FuelTrackerViewProps> = ({
                       ลิตรรวม: <strong className="font-mono text-black">{preview.accumulatedLiters} L</strong>
                       {preview.partialCount > 0 && ` (ทบยอดจาก ${preview.partialCount} ครั้งก่อนหน้า)`}
                     </span>
-                    <span className="bg-sky-400/20 text-sky-300 px-2 py-0.5 rounded font-mono font-bold border border-sky-400/30">
+                    <span className="bg-red-600/20 text-red-600 px-2 py-0.5 rounded font-mono font-bold border border-red-600/30">
                       อัตราสิ้นเปลือง: {preview.consumptionKmL} km/L ({preview.costPerKm} บ./km)
                     </span>
                   </div>
