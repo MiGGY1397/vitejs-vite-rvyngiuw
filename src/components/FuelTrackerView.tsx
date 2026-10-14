@@ -318,9 +318,9 @@ export const FuelTrackerView: React.FC<FuelTrackerViewProps> = ({
             <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 text-xs">
               {isFullTank ? (
                 preview && preview.tripDistance ? (
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-yellow-600 dark:text-yellow-400">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sky-600 dark:text-sky-400">
                     <span className="font-semibold flex items-center gap-1">
-                      <Zap className="w-3.5 h-3.5 text-yellow-400" />
+                      <Zap className="w-3.5 h-3.5 text-sky-400" />
                       ผลลัพธ์คำนวณรอบนี้:
                     </span>
                     <span>
@@ -330,7 +330,7 @@ export const FuelTrackerView: React.FC<FuelTrackerViewProps> = ({
                       ลิตรรวม: <strong className="font-mono text-white">{preview.accumulatedLiters} L</strong>
                       {preview.partialCount > 0 && ` (ทบยอดจาก ${preview.partialCount} ครั้งก่อนหน้า)`}
                     </span>
-                    <span className="bg-yellow-400/20 text-yellow-300 px-2 py-0.5 rounded font-mono font-bold border border-yellow-400/30">
+                    <span className="bg-sky-400/20 text-sky-300 px-2 py-0.5 rounded font-mono font-bold border border-sky-400/30">
                       อัตราสิ้นเปลือง: {preview.consumptionKmL} km/L ({preview.costPerKm} บ./km)
                     </span>
                   </div>
