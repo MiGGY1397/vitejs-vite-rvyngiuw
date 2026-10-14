@@ -326,6 +326,14 @@ export default function App() {
   };
 
   const handleAddVehicle = async (data: Omit<Vehicle, 'id' | 'createdAt'>) => {
+    // --- ระบบแจ้งเตือนกันลืมล็อกอิน (เพิ่มรถ) ---
+    if (!user || !spreadsheetId) {
+      const confirmSave = window.confirm(
+        '⚠️ แจ้งเตือน: คุณยังไม่ได้เชื่อมต่อ Google Sheets\n\nข้อมูลจะถูกบันทึกแค่ในเครื่องชั่วคราวและอาจหายไปเมื่อปิดแอป\n\n- กด "ตกลง" หากต้องการบันทึกชั่วคราว\n- กด "ยกเลิก" เพื่อกลับไปล็อกอินก่อน'
+      );
+      if (!confirmSave) return; // ถ้ายกเลิก ให้หยุดการทำงานทันที
+    }
+
     const newVehicle: Vehicle = {
       ...data,
       id: `car-${Date.now()}`,
@@ -348,6 +356,14 @@ export default function App() {
   };
 
   const handleAddFuelLog = async (logData: Omit<FuelLog, 'id'>) => {
+    // --- ระบบแจ้งเตือนกันลืมล็อกอิน (จดน้ำมัน) ---
+    if (!user || !spreadsheetId) {
+      const confirmSave = window.confirm(
+        '⚠️ แจ้งเตือน: คุณยังไม่ได้เชื่อมต่อ Google Sheets\n\nข้อมูลจะถูกบันทึกแค่ในเครื่องชั่วคราวและอาจหายไปเมื่อปิดแอป\n\n- กด "ตกลง" หากต้องการบันทึกชั่วคราว\n- กด "ยกเลิก" เพื่อกลับไปล็อกอินก่อน'
+      );
+      if (!confirmSave) return; // ถ้ายกเลิก ให้หยุดการทำงานทันที
+    }
+
     const newLog: FuelLog = {
       ...logData,
       id: `fuel-${Date.now()}`,
@@ -385,6 +401,14 @@ export default function App() {
   };
 
   const handleAddMaintenanceLog = async (maintData: Omit<MaintenanceLog, 'id'>) => {
+    // --- ระบบแจ้งเตือนกันลืมล็อกอิน (ซ่อมบำรุง) ---
+    if (!user || !spreadsheetId) {
+      const confirmSave = window.confirm(
+        '⚠️ แจ้งเตือน: คุณยังไม่ได้เชื่อมต่อ Google Sheets\n\nข้อมูลจะถูกบันทึกแค่ในเครื่องชั่วคราวและอาจหายไปเมื่อปิดแอป\n\n- กด "ตกลง" หากต้องการบันทึกชั่วคราว\n- กด "ยกเลิก" เพื่อกลับไปล็อกอินก่อน'
+      );
+      if (!confirmSave) return; // ถ้ายกเลิก ให้หยุดการทำงานทันที
+    }
+
     const newMaint: MaintenanceLog = {
       ...maintData,
       id: `maint-${Date.now()}`,
@@ -414,7 +438,6 @@ export default function App() {
   };
 
   return (
-    // เปลี่ยนตรงนี้! ใช้ relative w-full overflow-hidden ล็อก 100% เลย
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-yellow-400 selection:text-slate-950 relative w-full overflow-hidden">
       
       {toast && (
@@ -470,7 +493,6 @@ export default function App() {
         </div>
       )}
 
-      {/* เปลี่ยนตรงนี้! ใช้ w-full เพื่อไม่ให้ล้นจอ */}
       <main className="w-full max-w-7xl mx-auto px-2 sm:px-4 py-4 sm:py-6 pb-24 md:pb-12">
         {activeTab === 'dashboard' && (
           <DashboardView
