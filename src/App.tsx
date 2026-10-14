@@ -7,16 +7,20 @@ import { MaintenanceView } from './components/MaintenanceView';
 import { MonthlyReportView } from './components/MonthlyReportView';
 import { VehicleModal } from './components/VehicleModal';
 import { recalculateFuelLogs } from './lib/fuelAlgorithm';
-import { initAuth, googleSignIn, logout, getAccessToken } from './lib/googleAuth';
-import { 
-  getOrCreateCarLogSpreadsheet, 
-  loadSpreadsheetData, 
-  appendVehicleToSheet, 
-  appendFuelLogToSheet, 
-  appendMaintenanceLogToSheet 
-} from './lib/googleSheetsService';
 import type { User } from 'firebase/auth';
 import { CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
+
+// ============================================================================
+// 🚨 นำ Web App URL ที่ได้จาก Google Apps Script มาวางใส่ในเครื่องหมายคำพูดด้านล่างนี้ครับ
+const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxr9naIREqoJNho2qaohxkMMoyt7HioeP5iUoYpzUuwZoIgdlSOPbrbc96EfeBqzmcK/exec';
+// ============================================================================
+
+// สร้างข้อมูลผู้ใช้จำลองไว้ตลอดเวลา เพื่อซ่อนปุ่มบังคับล็อกอินของหน้าเว็บ
+const STATIC_OWNER_USER = {
+  displayName: 'Mik (Connected)',
+  email: 'Connected via Google Sheets',
+  photoURL: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
+} as unknown as User;
 
 const INITIAL_DEMO_VEHICLES: Vehicle[] = [
   {
@@ -32,114 +36,10 @@ const INITIAL_DEMO_VEHICLES: Vehicle[] = [
     notes: 'รถคันหลัก ใช้งานเดินทางประจำวัน',
     createdAt: '2026-01-15T08:00:00Z',
   },
-  {
-    id: 'car-2',
-    name: 'Mazda 2 Skyactiv-G',
-    licensePlate: '5กน 8899 เชียงใหม่',
-    initialOdometer: 32000,
-    currentOdometer: 32680,
-    fuelTankCapacity: 44,
-    fuelType: 'Gasohol 95',
-    color: 'Soul Red Crystal',
-    imageUrl: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80',
-    notes: 'รถซิตี้คาร์ ขับในเมืองคล่องตัว',
-    createdAt: '2026-02-10T10:00:00Z',
-  },
 ];
 
-const INITIAL_DEMO_FUEL_LOGS: FuelLog[] = [
-  {
-    id: 'fuel-1',
-    carId: 'car-1',
-    date: '2026-09-28',
-    time: '08:30',
-    odometer: 45000,
-    liters: 42.0,
-    totalCost: 1617,
-    pricePerLiter: 38.50,
-    isFullTank: true, 
-    gasStation: 'PTT Station',
-    notes: 'เติมเต็มถังเป็นฐานเริ่มต้น',
-  },
-  {
-    id: 'fuel-2',
-    carId: 'car-1',
-    date: '2026-10-03',
-    time: '18:15',
-    odometer: 45320,
-    liters: 10.5,
-    totalCost: 400,
-    pricePerLiter: 38.10,
-    isFullTank: false, 
-    gasStation: 'Bangchak',
-    notes: 'เติมรีบๆ 400 บาท (ทบยอด)',
-  },
-  {
-    id: 'fuel-3',
-    carId: 'car-1',
-    date: '2026-10-07',
-    time: '12:40',
-    odometer: 45780,
-    liters: 13.1,
-    totalCost: 500,
-    pricePerLiter: 38.15,
-    isFullTank: false, 
-    gasStation: 'Shell',
-    notes: 'เติมแวะปั๊ม 500 บาท',
-  },
-  {
-    id: 'fuel-4',
-    carId: 'car-1',
-    date: '2026-10-11',
-    time: '17:20',
-    odometer: 46250,
-    liters: 28.4,
-    totalCost: 1093,
-    pricePerLiter: 38.50,
-    isFullTank: true, 
-    gasStation: 'PTT Station',
-    notes: 'เติมเต็มถังปิดรอบสะสม',
-  },
-];
-
-const INITIAL_DEMO_MAINT_LOGS: MaintenanceLog[] = [
-  {
-    id: 'maint-1',
-    carId: 'car-1',
-    date: '2026-09-30',
-    odometer: 45100,
-    category: 'routine',
-    title: 'เปลี่ยนถ่ายน้ำมันเครื่องสังเคราะห์ 0W-20 พร้อมกรองแท้',
-    cost: 1850,
-    workshop: 'ศูนย์บริการฮอนด้า',
-    notes: 'เช็คระยะ 40,000 km ตามคู่มือ',
-    rawInput: 'เปลี่ยนถ่ายน้ำมันเครื่องสังเคราะห์ 0W-20 พร้อมกรองแท้ 1850',
-  },
-  {
-    id: 'maint-2',
-    carId: 'car-1',
-    date: '2026-10-04',
-    odometer: 45400,
-    category: 'upgrade',
-    title: 'ค้ำโช้คหน้า Ultra Racing Bar',
-    cost: 3200,
-    workshop: 'ร้านแต่งรถ Garage 9',
-    notes: 'เพิ่มความกระชับคมตอนเข้าโค้ง',
-    rawInput: 'ค้ำโช้คหน้า Ultra Racing Bar 3200',
-  },
-  {
-    id: 'maint-3',
-    carId: 'car-1',
-    date: '2026-10-08',
-    odometer: 45900,
-    category: 'tires_brakes',
-    title: 'เปลี่ยนผ้าเบรกหน้า Dixcel EC',
-    cost: 2800,
-    workshop: 'B-Quik',
-    notes: 'ผ้าเบรกเดิมเริ่มหมดสภาพ',
-    rawInput: 'เปลี่ยนผ้าเบรกหน้า Dixcel EC 2800',
-  },
-];
+const INITIAL_DEMO_FUEL_LOGS: FuelLog[] = [];
+const INITIAL_DEMO_MAINT_LOGS: MaintenanceLog[] = [];
 
 export default function App() {
   const [vehicles, setVehicles] = useState<Vehicle[]>(() => {
@@ -164,11 +64,9 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'fuel' | 'maintenance' | 'report'>('dashboard');
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
-  
-  const [user, setUser] = useState<User | null>(null);
-  const [spreadsheetId, setSpreadsheetId] = useState<string | null>(() => {
-    return localStorage.getItem('carlog_spreadsheet_id') || null;
-  });
+
+  // ล็อกสถานะว่าเชื่อมต่อแล้วตลอดเวลา ไม่ต้องล็อกอินผ่าน Firebase
+  const [user] = useState<User | null>(STATIC_OWNER_USER);
   const [spreadsheetUrl, setSpreadsheetUrl] = useState<string | null>(() => {
     return localStorage.getItem('carlog_spreadsheet_url') || null;
   });
@@ -196,144 +94,89 @@ export default function App() {
     localStorage.setItem('carlog_maint_logs', JSON.stringify(maintenanceLogs));
   }, [maintenanceLogs]);
 
-  useEffect(() => {
-    const unsubscribe = initAuth(
-      async (authUser, token) => {
-        setUser(authUser);
-        try {
-          setIsSyncing(true);
-          const setup = await getOrCreateCarLogSpreadsheet(token);
-          setSpreadsheetId(setup.spreadsheetId);
-          setSpreadsheetUrl(setup.spreadsheetUrl);
-          localStorage.setItem('carlog_spreadsheet_id', setup.spreadsheetId);
-          localStorage.setItem('carlog_spreadsheet_url', setup.spreadsheetUrl);
-
-          if (setup.isNewlyCreated) {
-            for (const v of vehicles) {
-              await appendVehicleToSheet(setup.spreadsheetId, v, token);
-            }
-            for (const f of fuelLogs) {
-              await appendFuelLogToSheet(setup.spreadsheetId, f, token);
-            }
-            for (const m of maintenanceLogs) {
-              await appendMaintenanceLogToSheet(setup.spreadsheetId, m, token);
-            }
-            showToast('สร้าง Google Sheet "CarLog Book" พร้อมหัวตารางสำเร็จแล้ว!', 'success');
-          } else {
-            const data = await loadSpreadsheetData(setup.spreadsheetId, token);
-            if (data.vehicles.length > 0) {
-              setVehicles(data.vehicles);
-              setSelectedVehicle(data.vehicles[0]);
-            }
-            if (data.fuelLogs.length > 0) {
-              setFuelLogs(data.fuelLogs);
-            }
-            if (data.maintenanceLogs.length > 0) {
-              setMaintenanceLogs(data.maintenanceLogs);
-            }
-            showToast('ซิงค์ข้อมูลกับ Google Sheet ของคุณเรียบร้อย', 'info');
-          }
-        } catch (err: any) {
-          console.error('Google Sheet auto-connect error:', err);
-        } finally {
-          setIsSyncing(false);
-        }
-      },
-      () => {
-        setUser(null);
-      }
-    );
-
-    return () => unsubscribe();
-  }, []);
-
-  const handleGoogleLogin = async () => {
-    try {
-      setIsSyncing(true);
-      const res = await googleSignIn();
-      if (res) {
-        setUser(res.user);
-        const setup = await getOrCreateCarLogSpreadsheet(res.accessToken);
-        setSpreadsheetId(setup.spreadsheetId);
-        setSpreadsheetUrl(setup.spreadsheetUrl);
-        localStorage.setItem('carlog_spreadsheet_id', setup.spreadsheetId);
-        localStorage.setItem('carlog_spreadsheet_url', setup.spreadsheetUrl);
-
-        if (setup.isNewlyCreated) {
-          for (const v of vehicles) {
-            await appendVehicleToSheet(setup.spreadsheetId, v, res.accessToken);
-          }
-          for (const f of fuelLogs) {
-            await appendFuelLogToSheet(setup.spreadsheetId, f, res.accessToken);
-          }
-          for (const m of maintenanceLogs) {
-            await appendMaintenanceLogToSheet(setup.spreadsheetId, m, res.accessToken);
-          }
-          showToast('สร้าง Google Sheet บน Google Drive ของคุณสำเร็จ 100%!', 'success');
-        } else {
-          const data = await loadSpreadsheetData(setup.spreadsheetId, res.accessToken);
-          if (data.vehicles.length > 0) {
-            setVehicles(data.vehicles);
-            setSelectedVehicle(data.vehicles[0]);
-          }
-          if (data.fuelLogs.length > 0) {
-            setFuelLogs(data.fuelLogs);
-          }
-          if (data.maintenanceLogs.length > 0) {
-            setMaintenanceLogs(data.maintenanceLogs);
-          }
-          showToast('เชื่อมต่อ Google Sheet สำเร็จ พร้อมโหลดข้อมูลเรียบร้อย', 'success');
-        }
-      }
-    } catch (err: any) {
-      showToast(err.message || 'เชื่อมต่อ Google ไม่สำเร็จ', 'error');
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    await logout();
-    setUser(null);
-    showToast('ออกจากระบบแล้ว', 'info');
-  };
-
-  const handleSyncWithSheets = async () => {
-    const token = await getAccessToken();
-    if (!token || !spreadsheetId) {
-      handleGoogleLogin();
+  // ฟังก์ชันดึงข้อมูลจาก Google Sheets ผ่าน GAS โดยตรง
+  const fetchFromGas = async (silent = false) => {
+    if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes('วาง_URL')) {
       return;
     }
 
     try {
       setIsSyncing(true);
-      const data = await loadSpreadsheetData(spreadsheetId, token);
-      if (data.vehicles.length > 0) {
-        setVehicles(data.vehicles);
-        if (selectedVehicle) {
-          const updated = data.vehicles.find((v) => v.id === selectedVehicle.id);
-          if (updated) setSelectedVehicle(updated);
+      const response = await fetch(GAS_WEB_APP_URL);
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        if (data.spreadsheetUrl) {
+          setSpreadsheetUrl(data.spreadsheetUrl);
+          localStorage.setItem('carlog_spreadsheet_url', data.spreadsheetUrl);
         }
+
+        if (data.vehicles && data.vehicles.length > 0) {
+          setVehicles(data.vehicles);
+          setSelectedVehicle((prev) => {
+            if (!prev) return data.vehicles[0];
+            return data.vehicles.find((v: Vehicle) => v.id === prev.id) || data.vehicles[0];
+          });
+        }
+
+        if (data.fuelLogs) {
+          setFuelLogs(recalculateFuelLogs(data.fuelLogs));
+        }
+
+        if (data.maintenanceLogs) {
+          setMaintenanceLogs(data.maintenanceLogs);
+        }
+
+        if (!silent) {
+          showToast('ซิงค์ข้อมูลล่าสุดจาก Google Sheets สำเร็จ!', 'success');
+        }
+      } else {
+        if (!silent) showToast('เกิดข้อผิดพลาดจากตาราง: ' + data.message, 'error');
       }
-      setFuelLogs(data.fuelLogs);
-      setMaintenanceLogs(data.maintenanceLogs);
-      showToast('ซิงค์ข้อมูลล่าสุดจาก Google Sheets สำเร็จ', 'success');
     } catch (err: any) {
-      showToast(err.message || 'ไม่สามารถซิงค์ได้', 'error');
+      console.error('GAS Sync Error:', err);
+      if (!silent) showToast('เชื่อมต่อ Google Sheets ไม่สำเร็จ กรุณาเช็คอินเทอร์เน็ต', 'error');
     } finally {
       setIsSyncing(false);
     }
   };
 
-  const handleAddVehicle = async (data: Omit<Vehicle, 'id' | 'createdAt'>) => {
-    // --- ระบบแจ้งเตือนกันลืมล็อกอิน (เพิ่มรถ) ---
-    if (!user || !spreadsheetId) {
-      const confirmSave = window.confirm(
-        '⚠️ แจ้งเตือน: คุณยังไม่ได้เชื่อมต่อ Google Sheets\n\nข้อมูลจะถูกบันทึกแค่ในเครื่องชั่วคราวและอาจหายไปเมื่อปิดแอป\n\n- กด "ตกลง" หากต้องการบันทึกชั่วคราว\n- กด "ยกเลิก" เพื่อกลับไปล็อกอินก่อน'
-      );
-      if (!confirmSave) return; // ถ้ายกเลิก ให้หยุดการทำงานทันที
+  // ฟังก์ชันส่งข้อมูลไปบันทึกที่ Google Sheets ผ่าน GAS
+  const postToGas = async (action: string, payloadData: any) => {
+    if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes('วาง_URL')) {
+      showToast('ยังไม่ได้ใส่ลิงก์ Google Apps Script ในโค้ด App.tsx', 'error');
+      return false;
     }
 
+    const res = await fetch(GAS_WEB_APP_URL, {
+      method: 'POST',
+      headers: {
+        // ใช้ text/plain เพื่อหลีกเลี่ยงปัญหา CORS Preflight บน Safari / iOS
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+      body: JSON.stringify({
+        action,
+        data: payloadData,
+      }),
+    });
+
+    const result = await res.json();
+    if (result.status !== 'success') {
+      throw new Error(result.message || 'บันทึกข้อมูลลง Sheet ไม่สำเร็จ');
+    }
+    return true;
+  };
+
+  // โหลดข้อมูลจาก Google Sheets อัตโนมัติทันทีที่เปิดแอป
+  useEffect(() => {
+    fetchFromGas(true);
+  }, []);
+
+  const handleSyncWithSheets = async () => {
+    await fetchFromGas(false);
+  };
+
+  const handleAddVehicle = async (data: Omit<Vehicle, 'id' | 'createdAt'>) => {
     const newVehicle: Vehicle = {
       ...data,
       id: `car-${Date.now()}`,
@@ -342,28 +185,18 @@ export default function App() {
 
     setIsSaving(true);
     try {
-      const token = await getAccessToken();
-      if (token && spreadsheetId) {
-        await appendVehicleToSheet(spreadsheetId, newVehicle, token);
-      }
-
+      await postToGas('addVehicle', newVehicle);
       setVehicles((prev) => [...prev, newVehicle]);
       setSelectedVehicle(newVehicle);
-      showToast(`เพิ่มรถ "${newVehicle.name}" เรียบร้อยแล้ว`, 'success');
+      showToast(`เพิ่มรถ "${newVehicle.name}" ลง Google Sheets เรียบร้อยแล้ว`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'บันทึกข้อมูลรถไม่สำเร็จ', 'error');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleAddFuelLog = async (logData: Omit<FuelLog, 'id'>) => {
-    // --- ระบบแจ้งเตือนกันลืมล็อกอิน (จดน้ำมัน) ---
-    if (!user || !spreadsheetId) {
-      const confirmSave = window.confirm(
-        '⚠️ แจ้งเตือน: คุณยังไม่ได้เชื่อมต่อ Google Sheets\n\nข้อมูลจะถูกบันทึกแค่ในเครื่องชั่วคราวและอาจหายไปเมื่อปิดแอป\n\n- กด "ตกลง" หากต้องการบันทึกชั่วคราว\n- กด "ยกเลิก" เพื่อกลับไปล็อกอินก่อน'
-      );
-      if (!confirmSave) return; // ถ้ายกเลิก ให้หยุดการทำงานทันที
-    }
-
     const newLog: FuelLog = {
       ...logData,
       id: `fuel-${Date.now()}`,
@@ -374,10 +207,7 @@ export default function App() {
       const updatedLogs = recalculateFuelLogs([...fuelLogs, newLog]);
       const enrichedNewLog = updatedLogs.find((l) => l.id === newLog.id) || newLog;
 
-      const token = await getAccessToken();
-      if (token && spreadsheetId) {
-        await appendFuelLogToSheet(spreadsheetId, enrichedNewLog, token);
-      }
+      await postToGas('addFuelLog', enrichedNewLog);
 
       setFuelLogs(updatedLogs);
 
@@ -391,24 +221,18 @@ export default function App() {
 
       showToast(
         newLog.isFullTank
-          ? 'บันทึกค่าน้ำมันเต็มถังและส่งเข้า Google Sheets เรียบร้อย!'
+          ? 'บันทึกค่าน้ำมันเต็มถังเข้า Google Sheets เรียบร้อย!'
           : 'บันทึกและทบยอดน้ำมัน (ไม่เต็มถัง) เข้า Google Sheets เรียบร้อย!',
         'success'
       );
+    } catch (err: any) {
+      showToast(err.message || 'บันทึกข้อมูลน้ำมันไม่สำเร็จ', 'error');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleAddMaintenanceLog = async (maintData: Omit<MaintenanceLog, 'id'>) => {
-    // --- ระบบแจ้งเตือนกันลืมล็อกอิน (ซ่อมบำรุง) ---
-    if (!user || !spreadsheetId) {
-      const confirmSave = window.confirm(
-        '⚠️ แจ้งเตือน: คุณยังไม่ได้เชื่อมต่อ Google Sheets\n\nข้อมูลจะถูกบันทึกแค่ในเครื่องชั่วคราวและอาจหายไปเมื่อปิดแอป\n\n- กด "ตกลง" หากต้องการบันทึกชั่วคราว\n- กด "ยกเลิก" เพื่อกลับไปล็อกอินก่อน'
-      );
-      if (!confirmSave) return; // ถ้ายกเลิก ให้หยุดการทำงานทันที
-    }
-
     const newMaint: MaintenanceLog = {
       ...maintData,
       id: `maint-${Date.now()}`,
@@ -416,10 +240,7 @@ export default function App() {
 
     setIsSaving(true);
     try {
-      const token = await getAccessToken();
-      if (token && spreadsheetId) {
-        await appendMaintenanceLogToSheet(spreadsheetId, newMaint, token);
-      }
+      await postToGas('addMaintenanceLog', newMaint);
 
       setMaintenanceLogs((prev) => [newMaint, ...prev]);
 
@@ -432,6 +253,8 @@ export default function App() {
       }
 
       showToast(`บันทึกรายการ "${newMaint.title}" (฿${newMaint.cost.toLocaleString()}) ลง Google Sheets แล้ว!`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'บันทึกข้อมูลซ่อมบำรุงไม่สำเร็จ', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -439,7 +262,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-yellow-400 selection:text-slate-950 relative w-full overflow-hidden">
-      
       {toast && (
         <div className="fixed top-4 right-4 z-50 animate-in fade-in slide-in-from-top-4 duration-200">
           <div
@@ -466,32 +288,13 @@ export default function App() {
         onOpenAddVehicle={() => setIsAddVehicleOpen(true)}
         user={user}
         spreadsheetUrl={spreadsheetUrl}
-        onLogin={handleGoogleLogin}
-        onLogout={handleLogout}
+        onLogin={handleSyncWithSheets}
+        onLogout={() => showToast('เชื่อมต่อตรงกับ Google Sheets ตลอดเวลาอยู่แล้ว', 'info')}
         onSync={handleSyncWithSheets}
         isSyncing={isSyncing}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
       />
-
-      {!user && (
-        <div className="bg-gradient-to-r from-slate-950 via-sky-950/70 to-slate-950 border-b border-sky-900/40 text-white px-2 sm:px-4 py-3 shadow-inner w-full">
-          <div className="w-full max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm">
-            <div className="flex items-center gap-2.5 w-full">
-              <ShieldCheck className="w-4 h-4 text-yellow-400 shrink-0" />
-              <span className="break-words w-full">
-                <strong className="text-yellow-400">ฐานข้อมูลส่วนตัว (Data Ownership 100%):</strong> เชื่อมต่อ Google Sheets เพื่อส่งข้อมูลทุกรายการไปเก็บใน Google Drive ของคุณเอง ไม่มีโฆษณา ไม่หาย
-              </span>
-            </div>
-            <button
-              onClick={handleGoogleLogin}
-              className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-yellow-400 to-amber-400 hover:from-yellow-300 hover:to-amber-300 text-slate-950 font-black text-xs whitespace-nowrap self-start sm:self-auto transition-all shadow-md shadow-yellow-400/20 active:scale-95 cursor-pointer"
-            >
-              ลงชื่อเข้าใช้ด้วย Google ทันที
-            </button>
-          </div>
-        </div>
-      )}
 
       <main className="w-full max-w-7xl mx-auto px-2 sm:px-4 py-4 sm:py-6 pb-24 md:pb-12">
         {activeTab === 'dashboard' && (
